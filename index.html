@@ -4,28 +4,66 @@
 <head>
 
 <meta charset="UTF-8">
-<title>Modelo 3D</title>
+<title>Visor 3D</title>
 
 <style>
 
 body {
-    margin: 0;
-    overflow: hidden;
-    background: #b8b8b8;
+    margin:0;
+    overflow:hidden;
+    background:#b8b8b8;
+    font-family:Arial;
 }
 
-canvas {
-    display: block;
+
+/* Panel de piezas */
+
+#panel {
+
+    position:absolute;
+    top:10px;
+    left:10px;
+
+    background:rgba(255,255,255,0.9);
+
+    padding:12px;
+
+    border-radius:8px;
+
+    max-height:90vh;
+
+    overflow:auto;
+
+    width:220px;
+
 }
+
+
+.item {
+
+    margin:5px 0;
+
+    font-size:14px;
+
+}
+
+
+canvas {
+
+    display:block;
+
+}
+
 
 </style>
 
 
 <script type="importmap">
 {
-  "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.160/build/three.module.js"
-  }
+ "imports":{
+  "three":
+  "https://cdn.jsdelivr.net/npm/three@0.160/build/three.module.js"
+ }
 }
 </script>
 
@@ -36,48 +74,64 @@ canvas {
 <body>
 
 
+<div id="panel">
+
+<b>Piezas</b>
+
+<div id="lista"></div>
+
+</div>
+
+
+
 <script type="module">
 
 
 import * as THREE from "three";
 
-import { GLTFLoader } from 
+
+import { GLTFLoader } from
 "https://cdn.jsdelivr.net/npm/three@0.160/examples/jsm/loaders/GLTFLoader.js";
 
-import { OrbitControls } from 
+
+import { OrbitControls } from
 "https://cdn.jsdelivr.net/npm/three@0.160/examples/jsm/controls/OrbitControls.js";
 
 
 
-//================================
+
+//=============================
 // ESCENA
-//================================
+//=============================
 
 const scene = new THREE.Scene();
 
-scene.background = new THREE.Color(0xb8b8b8);
+scene.background =
+new THREE.Color(0xb8b8b8);
 
 
 
-//================================
+//=============================
 // CAMARA
-//================================
+//=============================
 
-const camera = new THREE.PerspectiveCamera(
+const camera =
+new THREE.PerspectiveCamera(
 45,
-window.innerWidth / window.innerHeight,
+window.innerWidth/window.innerHeight,
 0.1,
 10000
 );
 
 
 
-//================================
+//=============================
 // RENDER
-//================================
+//=============================
 
-const renderer = new THREE.WebGLRenderer({
-    antialias:true
+const renderer =
+new THREE.WebGLRenderer({
+antialias:true
 });
 
 
@@ -87,14 +141,8 @@ window.innerHeight
 );
 
 
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-
-
-renderer.toneMapping =
-THREE.ACESFilmicToneMapping;
-
-
-renderer.toneMappingExposure = 1.0;
+renderer.outputColorSpace =
+THREE.SRGBColorSpace;
 
 
 document.body.appendChild(
@@ -103,77 +151,91 @@ renderer.domElement
 
 
 
-//================================
-// ILUMINACION EQUILIBRADA
-//================================
+//=============================
+// LUCES
+//=============================
 
 
-// Luz ambiente
-
-const ambient = new THREE.AmbientLight(
-    0xffffff,
-    1.2
+scene.add(
+new THREE.AmbientLight(
+0xffffff,
+1.2
+)
 );
 
-scene.add(ambient);
 
 
-
-// Luz principal
-
-const luz1 = new THREE.DirectionalLight(
-    0xffffff,
-    2
+const luz =
+new THREE.DirectionalLight(
+0xffffff,
+2
 );
 
-luz1.position.set(
-    8,
-    10,
-    12
+
+luz.position.set(
+8,10,12
 );
 
-scene.add(luz1);
+
+scene.add(luz);
 
 
 
-// Luz de relleno
-
-const luz2 = new THREE.DirectionalLight(
-    0xffffff,
-    0.8
+const luz2 =
+new THREE.DirectionalLight(
+0xffffff,
+0.8
 );
+
 
 luz2.position.set(
-    -8,
-    5,
-    5
+-8,5,5
 );
+
 
 scene.add(luz2);
 
 
 
-//================================
+//=============================
 // CONTROLES
-//================================
+//=============================
 
-const controls = new OrbitControls(
-    camera,
-    renderer.domElement
+const controls =
+new OrbitControls(
+camera,
+renderer.domElement
 );
 
 
-controls.enableDamping = true;
-
-controls.dampingFactor = 0.08;
+controls.enableDamping=true;
 
 
 
-//================================
-// CARGAR MODELO
-//================================
+//=============================
+// LISTA DE PIEZAS
+//=============================
 
-const loader = new GLTFLoader();
+const lista =
+document.getElementById(
+"lista"
+);
+
+
+
+let piezas=[];
+
+
+
+
+//=============================
+// CARGAR GLB
+//=============================
+
+
+const loader =
+new GLTFLoader();
+
 
 
 loader.load(
@@ -184,60 +246,58 @@ loader.load(
 (gltf)=>{
 
 
-const modelo = gltf.scene;
+const modelo =
+gltf.scene;
 
 
 scene.add(modelo);
 
 
 
-// Mantener materiales originales
+// Buscar piezas
 
-modelo.traverse((obj)=>{
-
-
-    if(obj.isMesh){
+modelo.traverse(
+(obj)=>{
 
 
-        obj.castShadow = true;
-
-        obj.receiveShadow = true;
+if(obj.isMesh){
 
 
-
-        if(obj.material){
-
-
-            obj.material.needsUpdate = true;
+    piezas.push(obj);
 
 
-            // No cambiar color
+    crearBoton(obj);
 
 
-            obj.material.metalness = 0;
+    if(obj.material){
 
+        obj.material.roughness=0.65;
 
-            obj.material.roughness = 0.65;
-
-
-        }
-
+        obj.material.metalness=0;
 
     }
 
 
-});
+}
+
+
+}
+
+);
 
 
 
-// Centrar modelo
 
-const caja = new THREE.Box3()
+// Centrar
+
+const caja =
+new THREE.Box3()
 .setFromObject(modelo);
 
 
 
-const centro = caja.getCenter(
+const centro =
+caja.getCenter(
 new THREE.Vector3()
 );
 
@@ -249,34 +309,26 @@ centro
 
 
 
-// Ajustar cámara
 
-const tamaño = caja.getSize(
+const tamaño =
+caja.getSize(
 new THREE.Vector3()
 );
 
 
-const maximo = Math.max(
-    tamaño.x,
-    tamaño.y,
-    tamaño.z
+
+const max =
+Math.max(
+tamaño.x,
+tamaño.y,
+tamaño.z
 );
 
 
 
-camera.position.set(
-    0,
-    0,
-    maximo * 2
-);
+camera.position.z =
+max*2;
 
-
-
-controls.target.set(
-    0,
-    0,
-    0
-);
 
 
 controls.update();
@@ -284,32 +336,21 @@ controls.update();
 
 
 console.log(
-"Modelo cargado correctamente"
+"Cantidad de piezas:",
+piezas.length
 );
+
 
 
 },
 
 
-
-(xhr)=>{
-
-console.log(
-"Cargando:",
-(xhr.loaded / xhr.total * 100).toFixed(1),
-"%"
-);
-
-},
-
+undefined,
 
 
 (error)=>{
 
-console.error(
-"Error cargando modelo:",
-error
-);
+console.error(error);
 
 }
 
@@ -319,9 +360,80 @@ error
 
 
 
-//================================
+
+//=============================
+// CREAR CHECKBOX
+//=============================
+
+
+function crearBoton(pieza){
+
+
+let nombre =
+pieza.name;
+
+
+if(!nombre || nombre===""){
+
+nombre="Pieza_"+(piezas.length);
+
+}
+
+
+
+let div =
+document.createElement("div");
+
+
+div.className="item";
+
+
+
+let check =
+document.createElement("input");
+
+
+check.type="checkbox";
+
+check.checked=true;
+
+
+
+check.onchange=()=>{
+
+pieza.visible =
+check.checked;
+
+};
+
+
+
+div.appendChild(check);
+
+
+
+div.appendChild(
+document.createTextNode(
+" "+nombre
+)
+);
+
+
+
+lista.appendChild(div);
+
+
+
+}
+
+
+
+
+
+//=============================
 // ANIMACION
-//================================
+//=============================
+
 
 function animate(){
 
@@ -348,9 +460,11 @@ animate();
 
 
 
-//================================
-// AJUSTE DE PANTALLA
-//================================
+
+//=============================
+// REDIMENSION
+//=============================
+
 
 window.addEventListener(
 "resize",
@@ -358,17 +472,19 @@ window.addEventListener(
 
 
 camera.aspect =
-window.innerWidth /
+window.innerWidth/
 window.innerHeight;
 
 
 camera.updateProjectionMatrix();
 
 
+
 renderer.setSize(
 window.innerWidth,
 window.innerHeight
 );
+
 
 
 });
