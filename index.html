@@ -1,47 +1,162 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-
 <meta charset="UTF-8">
-
-<script type="module"
-src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js">
-</script>
+<title>Visor 3D</title>
 
 <style>
-
-html,body{
-margin:0;
-height:100%;
-background:#f0f0f0;
+body {
+    margin: 0;
+    overflow: hidden;
+    background: #222;
 }
 
-model-viewer{
-width:100%;
-height:100%;
+canvas {
+    display: block;
 }
-
 </style>
 
 </head>
 
 <body>
 
-<model-viewer
+<script type="module">
 
-src="modelo.glb"
+import * as THREE from 
+'https://cdn.jsdelivr.net/npm/three@0.160/build/three.module.js';
 
-camera-controls
+import { STLLoader } from 
+'https://cdn.jsdelivr.net/npm/three@0.160/examples/jsm/loaders/STLLoader.js';
 
-auto-rotate
+import { OrbitControls } from 
+'https://cdn.jsdelivr.net/npm/three@0.160/examples/jsm/controls/OrbitControls.js';
 
-shadow-intensity="1"
 
-environment-image="neutral"
+// Escena
+const scene = new THREE.Scene();
 
->
 
-</model-viewer>
+// Cámara
+const camera = new THREE.PerspectiveCamera(
+    45,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    10000
+);
+
+camera.position.set(0,0,100);
+
+
+// Render
+const renderer = new THREE.WebGLRenderer({
+    antialias:true
+});
+
+renderer.setSize(
+    window.innerWidth,
+    window.innerHeight
+);
+
+document.body.appendChild(renderer.domElement);
+
+
+// Luz
+const light = new THREE.DirectionalLight(0xffffff,1);
+light.position.set(1,1,1);
+
+scene.add(light);
+
+scene.add(new THREE.AmbientLight(0xffffff,0.5));
+
+
+// Controles del mouse
+const controls = new OrbitControls(
+    camera,
+    renderer.domElement
+);
+
+
+// Cargar modelo STL
+const loader = new STLLoader();
+
+loader.load(
+    'modelo.stl',
+
+    function(geometry){
+
+        const material = new THREE.MeshPhongMaterial({
+            color:0x00aaff
+        });
+
+
+        const modelo = new THREE.Mesh(
+            geometry,
+            material
+        );
+
+
+        scene.add(modelo);
+
+
+        // Centrar modelo
+        geometry.computeBoundingBox();
+
+        const box = geometry.boundingBox;
+
+        const center = new THREE.Vector3();
+
+        box.getCenter(center);
+
+        modelo.position.sub(center);
+
+
+        camera.position.z =
+        Math.max(
+            box.max.x-box.min.x,
+            box.max.y-box.min.y,
+            box.max.z-box.min.z
+        ) * 2;
+
+    }
+);
+
+
+// Animación
+function animate(){
+
+    requestAnimationFrame(animate);
+
+    controls.update();
+
+    renderer.render(
+        scene,
+        camera
+    );
+
+}
+
+animate();
+
+
+// Ajustar pantalla
+window.addEventListener(
+'resize',
+()=>{
+
+camera.aspect =
+window.innerWidth/window.innerHeight;
+
+camera.updateProjectionMatrix();
+
+renderer.setSize(
+window.innerWidth,
+window.innerHeight
+);
+
+});
+
+
+</script>
 
 </body>
 </html>
