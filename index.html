@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Visor 3D - Hijos de Primer Nivel</title>
+  <title>Visor 3D - Iluminación Optimizada</title>
   <style>
     * {
       box-sizing: border-box;
@@ -118,6 +118,7 @@
     }
   </style>
 
+  <!-- Import Map para cargar módulos de Three.js e iluminación de estudio -->
   <script type="importmap">
     {
       "imports": {
@@ -142,28 +143,49 @@
     import * as THREE from 'three';
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-    // 1. Configuración de Escena y Cámara
+    // 1. Configuración del Escenario
     const container = document.getElementById('canvas-container');
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x1a1a1a);
+    scene.background = new THREE.Color(0x222222); // Fondo gris suave para mejor contraste
 
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
+    
+    // Configuración de renderizado de color profesional
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2; // Ajusta este valor si quieres más/menos brillo
     container.appendChild(renderer.domElement);
+
+    // Entorno de iluminación HDRI virtual (simula un estudio de fotografía)
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
 
-    // Luces
-    scene.add(new THREE.AmbientLight(0xffffff, 1.5));
-    const dirLight = new THREE.DirectionalLight(0xffffff, 2);
-    dirLight.position.set(10, 20, 10);
-    scene.add(dirLight);
+    // 2. Sistema de Luces Multidireccional
+    
+    // Luz de cielo/suelo (evita partes bajas totalmente oscuras)
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 2.0);
+    hemiLight.position.set(0, 20, 0);
+    scene.add(hemiLight);
 
-    // 2. Carga y Filtrado de Hijos del Primer Nivel
+    // Luz frontal principal
+    const dirLight1 = new THREE.DirectionalLight(0xffffff, 2.5);
+    dirLight1.position.set(10, 20, 10);
+    scene.add(dirLight1);
+
+    // Luz trasera de relleno (para iluminar la espalda del modelo)
+    const dirLight2 = new THREE.DirectionalLight(0xffffff, 1.5);
+    dirLight2.position.set(-10, -10, -10);
+    scene.add(dirLight2);
+
+    // 3. Carga del Modelo .GLB y Creación del Menú
     const loader = new GLTFLoader();
     const partsList = document.getElementById('parts-list');
     const loadingText = document.getElementById('loading');
@@ -173,26 +195,25 @@
       scene.add(model);
       loadingText.style.display = 'none';
 
-      // Centrar cámara
+      // Centrar cámara automáticamente
       const box = new THREE.Box3().setFromObject(model);
       const center = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3());
       const maxDim = Math.max(size.x, size.y, size.z);
+      
       camera.position.set(center.x + maxDim * 1.5, center.y + maxDim * 1.5, center.z + maxDim * 1.5);
       controls.target.copy(center);
       controls.update();
 
-      // --- LÓGICA DE DETECCIÓN DEL PRIMER NIVEL ---
+      // Detección de piezas del primer nivel
       let firstLevelChildren = [];
-
-      // Si la raíz tiene un solo nodo contenedor (ej. "Scene" o "Root"), bajamos 1 nivel
       if (model.children.length === 1 && model.children[0].children.length > 0) {
         firstLevelChildren = model.children[0].children;
       } else {
         firstLevelChildren = model.children;
       }
 
-      // Crear interruptor para cada hijo del primer nivel
+      // Menú interactivo
       firstLevelChildren.forEach((child, index) => {
         const name = child.name && child.name.trim() !== '' 
           ? child.name 
@@ -210,8 +231,6 @@
 
         const checkbox = item.querySelector('input');
         checkbox.addEventListener('change', (e) => {
-          // Ocultar/Mostrar la pieza del primer nivel
-          // (los sub-hijos de esta pieza mantendrán su relación pero se ocultarán junto con ella)
           child.visible = e.target.checked;
         });
 
