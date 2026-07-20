@@ -4,7 +4,7 @@
 <head>
 
 <meta charset="UTF-8">
-<title>Visor 3D</title>
+<title>Visor 3D CAD</title>
 
 <style>
 
@@ -16,13 +16,17 @@ body {
 }
 
 
-/* Panel de piezas */
-
 #panel {
 
     position:absolute;
     top:10px;
     left:10px;
+
+    width:240px;
+
+    max-height:90vh;
+
+    overflow:auto;
 
     background:rgba(255,255,255,0.9);
 
@@ -30,18 +34,12 @@ body {
 
     border-radius:8px;
 
-    max-height:90vh;
-
-    overflow:auto;
-
-    width:220px;
-
 }
 
 
 .item {
 
-    margin:5px 0;
+    margin:6px 0;
 
     font-size:14px;
 
@@ -53,7 +51,6 @@ canvas {
     display:block;
 
 }
-
 
 </style>
 
@@ -78,6 +75,8 @@ canvas {
 
 <b>Piezas</b>
 
+<hr>
+
 <div id="lista"></div>
 
 </div>
@@ -90,19 +89,19 @@ canvas {
 import * as THREE from "three";
 
 
-import { GLTFLoader } from
+import {GLTFLoader} from
 "https://cdn.jsdelivr.net/npm/three@0.160/examples/jsm/loaders/GLTFLoader.js";
 
 
-import { OrbitControls } from
+import {OrbitControls} from
 "https://cdn.jsdelivr.net/npm/three@0.160/examples/jsm/controls/OrbitControls.js";
 
 
 
 
-//=============================
+//=================================
 // ESCENA
-//=============================
+//=================================
 
 const scene = new THREE.Scene();
 
@@ -111,9 +110,10 @@ new THREE.Color(0xb8b8b8);
 
 
 
-//=============================
+
+//=================================
 // CAMARA
-//=============================
+//=================================
 
 const camera =
 new THREE.PerspectiveCamera(
@@ -125,13 +125,14 @@ window.innerWidth/window.innerHeight,
 
 
 
-//=============================
+
+//=================================
 // RENDER
-//=============================
+//=================================
 
 const renderer =
 new THREE.WebGLRenderer({
-antialias:true
+    antialias:true
 });
 
 
@@ -145,16 +146,23 @@ renderer.outputColorSpace =
 THREE.SRGBColorSpace;
 
 
+renderer.toneMapping =
+THREE.ACESFilmicToneMapping;
+
+
+renderer.toneMappingExposure = 1;
+
+
 document.body.appendChild(
 renderer.domElement
 );
 
 
 
-//=============================
-// LUCES
-//=============================
 
+//=================================
+// LUCES
+//=================================
 
 scene.add(
 new THREE.AmbientLight(
@@ -165,19 +173,19 @@ new THREE.AmbientLight(
 
 
 
-const luz =
+const luz1 =
 new THREE.DirectionalLight(
 0xffffff,
 2
 );
 
-
-luz.position.set(
-8,10,12
+luz1.position.set(
+8,
+10,
+12
 );
 
-
-scene.add(luz);
+scene.add(luz1);
 
 
 
@@ -187,19 +195,20 @@ new THREE.DirectionalLight(
 0.8
 );
 
-
 luz2.position.set(
--8,5,5
+-8,
+5,
+5
 );
-
 
 scene.add(luz2);
 
 
 
-//=============================
+
+//=================================
 // CONTROLES
-//=============================
+//=================================
 
 const controls =
 new OrbitControls(
@@ -210,27 +219,17 @@ renderer.domElement
 
 controls.enableDamping=true;
 
+controls.dampingFactor=0.08;
 
 
-//=============================
-// LISTA DE PIEZAS
-//=============================
+
+
+//=================================
+// CARGAR MODELO
+//=================================
 
 const lista =
-document.getElementById(
-"lista"
-);
-
-
-
-let piezas=[];
-
-
-
-
-//=============================
-// CARGAR GLB
-//=============================
+document.getElementById("lista");
 
 
 const loader =
@@ -254,7 +253,9 @@ scene.add(modelo);
 
 
 
-// Buscar piezas
+let contador=0;
+
+
 
 modelo.traverse(
 (obj)=>{
@@ -263,28 +264,43 @@ modelo.traverse(
 if(obj.isMesh){
 
 
-    piezas.push(obj);
-
-
-    crearBoton(obj);
-
-
-    if(obj.material){
-
-        obj.material.roughness=0.65;
-
-        obj.material.metalness=0;
-
-    }
-
-
-}
-
-
-}
-
+console.log(
+"PIEZA:",
+obj.name
 );
 
+
+
+crearBoton(obj);
+
+
+
+contador++;
+
+
+
+if(obj.material){
+
+obj.material.needsUpdate=true;
+
+obj.material.metalness=0;
+
+obj.material.roughness=0.65;
+
+}
+
+
+
+}
+
+
+});
+
+
+console.log(
+"Piezas encontradas:",
+contador
+);
 
 
 
@@ -302,11 +318,9 @@ new THREE.Vector3()
 );
 
 
-
 modelo.position.sub(
 centro
 );
-
 
 
 
@@ -317,7 +331,7 @@ new THREE.Vector3()
 
 
 
-const max =
+const maximo =
 Math.max(
 tamaño.x,
 tamaño.y,
@@ -326,31 +340,51 @@ tamaño.z
 
 
 
-camera.position.z =
-max*2;
+camera.position.set(
+0,
+0,
+maximo*2
+);
 
+
+
+controls.target.set(
+0,
+0,
+0
+);
 
 
 controls.update();
 
 
 
-console.log(
-"Cantidad de piezas:",
-piezas.length
-);
+},
 
+
+
+(xhr)=>{
+
+
+console.log(
+"Cargando:",
+(xhr.loaded/xhr.total*100).toFixed(1),
+"%"
+);
 
 
 },
 
 
-undefined,
-
 
 (error)=>{
 
-console.error(error);
+
+console.error(
+"Error:",
+error
+);
+
 
 }
 
@@ -360,28 +394,30 @@ console.error(error);
 
 
 
-
-//=============================
+//=================================
 // CREAR CHECKBOX
-//=============================
-
+//=================================
 
 function crearBoton(pieza){
+
 
 
 let nombre =
 pieza.name;
 
 
-if(!nombre || nombre===""){
 
-nombre="Pieza_"+(piezas.length);
+if(!nombre || nombre==""){
+
+nombre =
+"Pieza";
 
 }
 
 
 
-let div =
+
+const div =
 document.createElement("div");
 
 
@@ -389,7 +425,7 @@ div.className="item";
 
 
 
-let check =
+const check =
 document.createElement("input");
 
 
@@ -399,12 +435,24 @@ check.checked=true;
 
 
 
-check.onchange=()=>{
 
-pieza.visible =
+check.addEventListener(
+"change",
+()=>{
+
+
+pieza.traverse(
+(hijo)=>{
+
+hijo.visible =
 check.checked;
 
-};
+}
+);
+
+
+});
+
 
 
 
@@ -429,11 +477,9 @@ lista.appendChild(div);
 
 
 
-
-//=============================
+//=================================
 // ANIMACION
-//=============================
-
+//=================================
 
 function animate(){
 
@@ -460,11 +506,9 @@ animate();
 
 
 
-
-//=============================
-// REDIMENSION
-//=============================
-
+//=================================
+// AJUSTE PANTALLA
+//=================================
 
 window.addEventListener(
 "resize",
@@ -486,8 +530,8 @@ window.innerHeight
 );
 
 
-
 });
+
 
 
 </script>
