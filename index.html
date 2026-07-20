@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Visor 3D - Control de Piezas Padre</title>
+  <title>Visor 3D - Hijos de Primer Nivel</title>
   <style>
     * {
       box-sizing: border-box;
@@ -18,19 +18,18 @@
       color: #fff;
     }
 
-    /* Contenedor del render 3D */
     #canvas-container {
       width: 100vw;
       height: 100vh;
       display: block;
     }
 
-    /* Menú lateral flotante para las piezas */
+    /* Menú lateral */
     #menu {
       position: absolute;
       top: 20px;
       left: 20px;
-      width: 280px;
+      width: 290px;
       max-height: calc(100vh - 40px);
       background: rgba(30, 30, 30, 0.85);
       backdrop-filter: blur(10px);
@@ -50,29 +49,28 @@
       color: #00d2ff;
     }
 
-    /* Estilo de la lista de piezas */
     .part-item {
       display: flex;
       align-items: center;
       justify-content: space-between;
       margin-bottom: 12px;
-      padding: 6px 0;
+      padding: 4px 0;
     }
 
     .part-name {
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 180px;
+      max-width: 190px;
     }
 
-    /* Interruptor tipo Switch */
+    /* Switch */
     .switch {
       position: relative;
       display: inline-block;
-      width: 44px;
-      height: 22px;
+      width: 40px;
+      height: 20px;
     }
 
     .switch input {
@@ -87,14 +85,14 @@
       top: 0; left: 0; right: 0; bottom: 0;
       background-color: #444;
       transition: .3s;
-      border-radius: 22px;
+      border-radius: 20px;
     }
 
     .slider:before {
       position: absolute;
       content: "";
-      height: 16px;
-      width: 16px;
+      height: 14px;
+      width: 14px;
       left: 3px;
       bottom: 3px;
       background-color: white;
@@ -107,10 +105,9 @@
     }
 
     input:checked + .slider:before {
-      transform: translateX(22px);
+      transform: translateX(20px);
     }
 
-    /* Mensaje de carga */
     #loading {
       position: absolute;
       top: 50%;
@@ -118,11 +115,9 @@
       transform: translate(-50%, -50%);
       font-size: 1.2rem;
       color: #fff;
-      pointer-events: none;
     }
   </style>
 
-  <!-- Import Map para cargar Three.js moderno desde CDN -->
   <script type="importmap">
     {
       "imports": {
@@ -137,7 +132,7 @@
   <div id="loading">Cargando modelo.glb...</div>
 
   <div id="menu">
-    <h2>Piezas Principales</h2>
+    <h2>Piezas (Primer Nivel)</h2>
     <div id="parts-list"></div>
   </div>
 
@@ -148,35 +143,27 @@
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-    // 1. Configuración del Escenario 3D
+    // 1. Configuración de Escena y Cámara
     const container = document.getElementById('canvas-container');
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x1a1a1a);
 
-    // Cámara
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(5, 5, 5);
-
-    // Renderizador
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.shadowMap.enabled = true;
     container.appendChild(renderer.domElement);
 
-    // Controles de órbita (Rotar con Click, Zoom con Rueda)
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
 
-    // Iluminación
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
-    scene.add(ambientLight);
-
+    // Luces
+    scene.add(new THREE.AmbientLight(0xffffff, 1.5));
     const dirLight = new THREE.DirectionalLight(0xffffff, 2);
     dirLight.position.set(10, 20, 10);
     scene.add(dirLight);
 
-    // 2. Carga del Modelo .GLB
+    // 2. Carga y Filtrado de Hijos del Primer Nivel
     const loader = new GLTFLoader();
     const partsList = document.getElementById('parts-list');
     const loadingText = document.getElementById('loading');
@@ -186,42 +173,46 @@
       scene.add(model);
       loadingText.style.display = 'none';
 
-      // Centrar la cámara automáticamente en el modelo
+      // Centrar cámara
       const box = new THREE.Box3().setFromObject(model);
       const center = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3());
       const maxDim = Math.max(size.x, size.y, size.z);
-      
       camera.position.set(center.x + maxDim * 1.5, center.y + maxDim * 1.5, center.z + maxDim * 1.5);
       controls.target.copy(center);
       controls.update();
 
-      // 3. Filtrar únicamente las piezas PADRE
-      // (Buscamos solo los hijos directos de la raíz del GLB)
-      const parentNodes = model.children;
+      // --- LÓGICA DE DETECCIÓN DEL PRIMER NIVEL ---
+      let firstLevelChildren = [];
 
-      parentNodes.forEach((parent, index) => {
-        // Asignar un nombre legible si el nodo no tiene uno asignado en 3D
-        const partName = parent.name && parent.name.trim() !== '' 
-          ? parent.name 
-          : `Pieza Padre ${index + 1}`;
+      // Si la raíz tiene un solo nodo contenedor (ej. "Scene" o "Root"), bajamos 1 nivel
+      if (model.children.length === 1 && model.children[0].children.length > 0) {
+        firstLevelChildren = model.children[0].children;
+      } else {
+        firstLevelChildren = model.children;
+      }
 
-        // Crear elemento en el menú lateral para la pieza padre
+      // Crear interruptor para cada hijo del primer nivel
+      firstLevelChildren.forEach((child, index) => {
+        const name = child.name && child.name.trim() !== '' 
+          ? child.name 
+          : `Pieza ${index + 1}`;
+
         const item = document.createElement('div');
         item.className = 'part-item';
         item.innerHTML = `
-          <span class="part-name" title="${partName}">${partName}</span>
+          <span class="part-name" title="${name}">${name}</span>
           <label class="switch">
-            <input type="checkbox" checked data-index="${index}">
+            <input type="checkbox" checked>
             <span class="slider"></span>
           </label>
         `;
 
-        // Evento para ocultar / mostrar la pieza padre completa
         const checkbox = item.querySelector('input');
         checkbox.addEventListener('change', (e) => {
-          // Cambia la visibilidad del padre (automáticamente oculta todos sus hijos)
-          parent.visible = e.target.checked;
+          // Ocultar/Mostrar la pieza del primer nivel
+          // (los sub-hijos de esta pieza mantendrán su relación pero se ocultarán junto con ella)
+          child.visible = e.target.checked;
         });
 
         partsList.appendChild(item);
@@ -229,17 +220,15 @@
 
     }, undefined, (error) => {
       console.error(error);
-      loadingText.textContent = 'Error al cargar modelo.glb (Verifica que esté en la misma carpeta)';
+      loadingText.textContent = 'Error al cargar modelo.glb';
     });
 
-    // Ajustar el visor si se cambia el tamaño de la ventana
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    // Bucle de animación
     function animate() {
       requestAnimationFrame(animate);
       controls.update();
